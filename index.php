@@ -221,6 +221,7 @@ $MAX_UPLOAD_SIZE = min(asBytes(ini_get('post_max_size')), asBytes(ini_get('uploa
 ?>
 <!DOCTYPE html>
 <html><head>
+	<title>简单文件管理系统</title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
 
 <style>
@@ -274,7 +275,7 @@ a.delete {display:inline-block;
 	padding:4px 0 4px 20px;
 }
 </style>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script src="jquery.min1.8.2.js"></script>
 <script>
 (function($){
 	$.fn.tablesorter = function() {
@@ -474,12 +475,29 @@ $(function(){
 		return $html;
 	}
 	function formatTimestamp(unix_timestamp) {
-		var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-		var d = new Date(unix_timestamp*1000);
-		return [m[d.getMonth()],' ',d.getDate(),', ',d.getFullYear()," ",
-			(d.getHours() % 12 || 12),":",(d.getMinutes() < 10 ? '0' : '')+d.getMinutes(),
-			" ",d.getHours() >= 12 ? 'PM' : 'AM'].join('');
+
+		//datetime是拿到的时间戳
+var date = new Date(unix_timestamp*1000);//时间戳为10位需*1000，时间戳为13位的话不需乘1000 
+var year = date.getFullYear(),
+    month = ("0" + (date.getMonth() + 1)).slice(-2),
+    sdate = ("0" + date.getDate()).slice(-2),
+    hour = ("0" + date.getHours()).slice(-2),
+    minute = ("0" + date.getMinutes()).slice(-2),
+    second = ("0" + date.getSeconds()).slice(-2);
+// 拼接
+var result = year + "-"+ month +"-"+ sdate +" "+ hour +":"+ minute +":" + second;
+// 返回
+return result;
+
+		// var m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+		// var d = new Date(unix_timestamp*1000);
+		// return [m[d.getMonth()],' ',d.getDate(),', ',d.getFullYear()," ",
+		// 	(d.getHours() % 12 || 12),":",(d.getMinutes() < 10 ? '0' : '')+d.getMinutes(),
+		// 	" ",d.getHours() >= 12 ? 'PM' : 'AM'].join('');
 	}
+
+
+
 	function formatFileSize(bytes) {
 		var s = ['bytes', 'KB','MB','GB','TB','PB','EB'];
 		for(var pos = 0;bytes >= 1000; pos++,bytes /= 1024);
