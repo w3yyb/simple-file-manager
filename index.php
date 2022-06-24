@@ -17,7 +17,8 @@ $allow_direct_link = true; // Set to false to only allow downloads and not direc
 $allow_show_folders = true; // Set to false to hide all subdirectories
 
 $disallowed_patterns = ['*.php'];  // must be an array.  Matching files not allowed to be uploaded
-$hidden_patterns = ['*.php','.*']; // Matching files hidden in directory index
+// $hidden_patterns = ['*.php','.*']; // Matching files hidden in directory index
+$hidden_patterns = ['*.php']; // Matching files hidden in directory index
 
 $PASSWORD = '';  // Set the password, to access the file manager... (optional)
 
@@ -61,6 +62,17 @@ if($_POST) {
 		err(403,"XSRF Failure");
 }
 
+function GetDirectorySize($path){
+    $bytestotal = 0;
+    $path = realpath($path);
+    if($path!==false && $path!='' && file_exists($path)){
+        foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)) as $object){
+            $bytestotal += $object->getSize();
+        }
+    }
+    return $bytestotal;
+}
+
 $file = $_REQUEST['file'] ?: '.';
 
 if($_GET['do'] == 'list') {
@@ -70,10 +82,17 @@ if($_GET['do'] == 'list') {
 		$files = array_diff(scandir($directory), ['.','..']);
 		foreach ($files as $entry) if (!is_entry_ignored($entry, $allow_show_folders, $hidden_patterns)) {
 			$i = $directory . '/' . $entry;
+			
 			$stat = stat($i);
+			if (is_dir($i)) {
+				$thesize=GetDirectorySize($i);
+				  }else{
+				$thesize=$stat['size'];
+				  
+				  }
 			$result[] = [
 				'mtime' => $stat['mtime'],
-				'size' => $stat['size'],
+				'size' => $thesize,
 				'name' => basename($i),
 				'path' => preg_replace('@^\./@', '', $i),
 				'is_dir' => is_dir($i),
@@ -235,8 +254,8 @@ thead {max-width: 1024px}
 td { padding:.2em 1em .2em .2em; border-bottom:1px solid #def;height:30px; font-size:12px;white-space: nowrap;}
 td.first {font-size:14px;white-space: normal;}
 td.empty { color:#777; font-style: italic; text-align: center;padding:3em 0;}
-.is_dir .size {color:transparent;font-size:0;}
-.is_dir .size:before {content: "--"; font-size:14px;color:#333;}
+/* .is_dir .size {color:transparent;font-size:0;} */
+/* .is_dir .size:before {content: ""; font-size:14px;color:#333;} */
 .is_dir .download{visibility: hidden}
 a.delete {display:inline-block;
 	background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAADtSURBVHjajFC7DkFREJy9iXg0t+EHRKJDJSqRuIVaJT7AF+jR+xuNRiJyS8WlRaHWeOU+kBy7eyKhs8lkJrOzZ3OWzMAD15gxYhB+yzAm0ndez+eYMYLngdkIf2vpSYbCfsNkOx07n8kgWa1UpptNII5VR/M56Nyt6Qq33bbhQsHy6aR0WSyEyEmiCG6vR2ffB65X4HCwYC2e9CTjJGGok4/7Hcjl+ImLBWv1uCRDu3peV5eGQ2C5/P1zq4X9dGpXP+LYhmYz4HbDMQgUosWTnmQoKKf0htVKBZvtFsx6S9bm48ktaV3EXwd/CzAAVjt+gHT5me0AAAAASUVORK5CYII=) no-repeat scroll 0 2px;
@@ -307,9 +326,18 @@ $(function(){
 	$('#table').tablesorter();
 
 	$('#table').on('click','.delete',function(data) {
-		$.post("",{'do':'delete',file:$(this).attr('data-file'),xsrf:XSRF},function(response){
+
+		var msg = "您真的确定要删除:"+$(this).attr('data-file')+"吗?\n\n请确认！"; 
+ if (confirm(msg)==true){ 
+	$.post("",{'do':'delete',file:$(this).attr('data-file'),xsrf:XSRF},function(response){
 			list();
 		},'json');
+ }else{ 
+  return false; 
+ } 
+
+
+		
 		return false;
 	});
 
@@ -408,22 +436,24 @@ $(function(){
 		},'json');
 	}
 	function renderFileRow(data) {
+		console.log(data)
 		var $link = $('<a class="name" />')
 			.attr('href', data.is_dir ? '#' + encodeURIComponent(data.path) : './' + data.path)
 			.text(data.name);
 		var allow_direct_link = <?php echo $allow_direct_link?'true':'false'; ?>;
         	if (!data.is_dir && !allow_direct_link)  $link.css('pointer-events','none');
 		var $dl_link = $('<a/>').attr('href','?do=download&file='+ encodeURIComponent(data.path))
-			.addClass('download').text('download');
-		var $delete_link = $('<a href="#" />').attr('data-file',data.path).addClass('delete').text('delete');
+			.addClass('download').text('下载');
+		var $delete_link = $('<a href="#" />').attr('data-file',data.path).addClass('delete').text('删除');
 		var perms = [];
-		if(data.is_readable) perms.push('read');
-		if(data.is_writable) perms.push('write');
-		if(data.is_executable) perms.push('exec');
+		if(data.is_readable) perms.push('读');
+		if(data.is_writable) perms.push('写');
+		if(data.is_executable) perms.push('执行');
 		var $html = $('<tr />')
 			.addClass(data.is_dir ? 'is_dir' : '')
 			.append( $('<td class="first" />').append($link) )
-			.append( $('<td/>').attr('data-sort',data.is_dir ? -1 : data.size)
+			// .append( $('<td/>').attr('data-sort',data.is_dir ? -1 : data.size)
+			.append( $('<td/>').attr('data-sort',data.is_dir ? data.size : data.size)
 				.html($('<span class="size" />').text(formatFileSize(data.size))) )
 			.append( $('<td/>').attr('data-sort',data.mtime).text(formatTimestamp(data.mtime)) )
 			.append( $('<td/>').text(perms.join('+')) )
@@ -482,13 +512,13 @@ $(function(){
 
 <div id="upload_progress"></div>
 <table id="table"><thead><tr>
-	<th>Name</th>
-	<th>Size</th>
-	<th>Modified</th>
-	<th>Permissions</th>
-	<th>Actions</th>
+	<th>文件名</th>
+	<th>大小</th>
+	<th>修改时间</th>
+	<th>权限</th>
+	<th>操作</th>
 </tr></thead><tbody id="list">
 
 </tbody></table>
-<footer>simple php filemanager by <a href="https://github.com/jcampbell1">jcampbell1</a></footer>
+<footer> </footer>
 </body></html>
